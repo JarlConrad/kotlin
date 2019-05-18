@@ -2,7 +2,7 @@ package deliege.adrien.cms
 
 import deliege.adrien.cms.model.Article
 import deliege.adrien.cms.model.Comment
-import deliege.adrien.cms.model.UserSession
+import deliege.adrien.cms.model.MySession
 import deliege.adrien.cms.tpl.ArticleContext
 import deliege.adrien.cms.tpl.IndexContext
 import freemarker.cache.ClassTemplateLoader
@@ -26,9 +26,7 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.sessions.*
 import io.ktor.util.KtorExperimentalAPI
-import io.ktor.util.hex
 import kotlinx.coroutines.launch
-import java.io.File
 
 class App
 
@@ -43,67 +41,56 @@ fun main()
             templateLoader = ClassTemplateLoader(App::class.java.classLoader, "templates")
         }
 
-        install(Authentication) {
-            basic(name = "auth") {
-                realm = "Ktor Server"
-                validate { credentials ->
-                    if (credentials.name == credentials.password) {
-                        UserIdPrincipal(credentials.name)
-                    } else {
-                        null
-                    }
-                }
-                skipWhen { call -> call.sessions.get<UserSession>() != null }
-            }
-            basic(name = "auth2") {
-                realm = "Ktor Server"
-                validate { credentials ->
-                    if (credentials.name == "hey" && credentials.password == "ho") {
-                        UserIdPrincipal(credentials.name)
-                    } else {
-                        null
-                    }
-                }
-                skipWhen { call -> call.sessions.get<UserSession>() != null }
-            }
-        }
-
         install(Sessions) {
-            val secretHashKey = hex("6819b57a326945c1968f45236589")
-
-            cookie<UserSession>(
-                "LOGIN_COOKIE",
-                directorySessionStorage(rootDir = File(".sessions"), cached = true)
-            ) {
-                cookie.path = "/" // Specify cookie's path '/' so it can be used in the whole site
-                transform(SessionTransportTransformerMessageAuthentication(secretHashKey, "HmacSHA256"))
-            }
+            cookie<MySession>("SESSION")
         }
 
         routing {
 
-            authenticate ("auth2") {
-                get("/admin") {
-                    val principal: UserIdPrincipal? = call.authentication.principal<UserIdPrincipal>()
-                    //val userSessions = call.sessions.get<UserSession>()
-                    //val session = call.sessions.get<UserSession>() ?: UserSession(principal.name)
+            install(Authentication) {
+                form("login") {
+                    userParamName = "username"
+                    passwordParamName = "password"
+                    challenge = FormAuthChallenge.Unauthorized
+                    validate { credentials -> if (credentials.name == credentials.password) UserIdPrincipal(credentials.name) else null }
+                }
+            }
 
-//                    if (userSessions == null)
-//                    {
-//                        if (principal != null) {
-//                            call.sessions.set(UserSession(name = principal.name).toString())
-//                        }
-//                    }
-                    if (principal != null) {
-                        call.respondText("Hello "+principal.name)
-                        call.sessions.set(UserSession(name = principal.name).toString())
+            route("/login") {
+                get {
+                    val session = call.sessions.get<MySession>()
+                    if (session != null) {
+                        call.respondRedirect("/admin", permanent = false)
+                    } else {
+                        call.respond(FreeMarkerContent("login.ftl", null))
+                    }
+
+                }
+                authenticate("login") {
+                    post {
+                        val principal = call.principal<UserIdPrincipal>() ?: error("No principal")
+                        call.sessions.set("SESSION", MySession(principal.name))
+                        call.respondRedirect("/admin", permanent = false)
                     }
                 }
             }
-            route("/logout") {
-                get {
-                    call.sessions.clear<UserSession>()
-                    call.respondText("logout")
+
+            get("/logout") {
+                val session = call.sessions.get<MySession>()
+                if (session != null) {
+                    call.sessions.clear<MySession>()
+                    call.respondRedirect("/", permanent = false)
+                } else {
+                    call.respond(FreeMarkerContent("login.ftl", null))
+                }
+            }
+
+            get("/admin") {
+                val session = call.sessions.get<MySession>()
+                if (session != null) {
+                    call.respondText("User is logged")
+                } else {
+                    call.respondRedirect("/login", permanent = false)
                 }
             }
 
@@ -143,11 +130,6 @@ fun main()
                     call.respondRedirect("/article/$id", permanent = false)
                 }
             }
-
-//            post("/logout") {
-//                call.sessions.clear<MySession>()
-//                redirect("/")
-//            }
 
             get("/") {
                 val controller = appComponents.getArticleListPresenter(object:ArticleListPresenter.View {
