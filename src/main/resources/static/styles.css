@@ -1,0 +1,17 @@
+/*body {
+    background-color: red;
+}*/
+
+li {
+    margin: 10px;
+    list-style: none;
+}
+
+li a {
+    color: black;
+}
+
+li a:hover {
+    color: red;
+    text-decoration: none;
+}

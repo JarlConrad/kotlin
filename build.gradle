@@ -1,0 +1,32 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.3.31'
+}
+
+group 'deliege.adrien.cms'
+version '1.0-SNAPSHOT'
+
+ext.ktor_version = '1.2.0-rc'
+
+repositories {
+    jcenter()//mavenCentral()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "io.ktor:ktor-server-netty:$ktor_version"
+    implementation "ch.qos.logback:logback-classic:1.2.3"
+    implementation "io.ktor:ktor-freemarker:$ktor_version"
+    implementation "mysql:mysql-connector-java:8.0.16"
+    implementation "io.ktor:ktor-auth:$ktor_version"
+    implementation "io.ktor:ktor-server-sessions:$ktor_version"
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation "com.nhaarman.mockitokotlin2:mockito-kotlin:2.1.0"
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
