@@ -3,6 +3,15 @@
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+    <nav>
+        <#if session?has_content>
+            <a class="login" href="/logout">Deconnexion</a>
+        <#else>
+            <a class="login" href="/login">Connexion</a>
+        </#if>
+        <br>
+        <a class="login" href="/">Retour</a>
+    </nav>
     <h1>${article.title}</h1>
     <p>${article.text}</p>
     <ul>
