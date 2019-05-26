@@ -56,49 +56,31 @@ fun main()
                 }
             }
 
-            route("/login") {
-                get {
+            //////////////////////
+            // GET ARTICLE LIST //
+            //////////////////////
+            get("/") {
+                val controller = appComponents.getArticleListPresenter(object:ArticleListPresenter.View {
                     val session = call.sessions.get<MySession>()
-                    if (session != null) {
-                        call.respondRedirect("/admin", permanent = false)
-                    } else {
-                        call.respond(FreeMarkerContent("login.ftl", null))
+                    override fun displayArticleList( list : List<Article>) {
+                        val context = IndexContext(list, session)
+                        launch {
+                            call.respond(FreeMarkerContent("index.ftl", context, "e"))
+                        }
                     }
-
-                }
-                authenticate("login") {
-                    post {
-                        val principal = call.principal<UserIdPrincipal>() ?: error("No principal")
-                        call.sessions.set("SESSION", MySession(principal.name))
-                        call.respondRedirect("/admin", permanent = false)
-                    }
-                }
+                })
+                controller.start()
             }
 
-            get("/logout") {
-                val session = call.sessions.get<MySession>()
-                if (session != null) {
-                    call.sessions.clear<MySession>()
-                    call.respondRedirect("/", permanent = false)
-                } else {
-                    call.respond(FreeMarkerContent("login.ftl", null))
-                }
-            }
-
-            get("/admin") {
-                val session = call.sessions.get<MySession>()
-                if (session != null) {
-                    call.respondText("User is logged")
-                } else {
-                    call.respondRedirect("/login", permanent = false)
-                }
-            }
-
+            ////////////////////////////////////////
+            // GET ONE ARTICLE OR POST NEW COMMENT//
+            ////////////////////////////////////////
             route("/article/{id}") {
                 get {
                     val controller = appComponents.getArticlePresenter(object : ArticlePresenter.View {
+                        val session = call.sessions.get<MySession>()
                         override fun displayArticle(article: Article, comments: List<Comment>) {
-                            val context = ArticleContext(article, comments)
+                            val context = ArticleContext(article, comments, session)
                             launch {
                                 call.respond(FreeMarkerContent("article.ftl", context, "e"))
                             }
@@ -125,22 +107,126 @@ fun main()
                     val post = call.receiveParameters()
                     if (id != null)
                     {
-                        controller.start(id, post["comment"]!!)
+                        controller.store(id, post["comment"]!!)
                     }
                     call.respondRedirect("/article/$id", permanent = false)
                 }
             }
 
-            get("/") {
-                val controller = appComponents.getArticleListPresenter(object:ArticleListPresenter.View {
-                    override fun displayArticleList( list : List<Article>) {
-                        val context = IndexContext(list)
+            /////////////////////
+            // POST NEW ARTICLE//
+            /////////////////////
+            route("/article/store") {
+                get {
+                    val session = call.sessions.get<MySession>()
+                    if (session != null) {
+                        call.respond(FreeMarkerContent("article_store.ftl", null))
+                    } else {
+                        call.respondRedirect("/", permanent = false)
+                    }
+                }
+
+                post {
+                    val controller = appComponents.getArticlePresenter(object : ArticlePresenter.View {
+                        val session = call.sessions.get<MySession>()
+                        override fun displayArticle(article: Article, comments: List<Comment>) {
+                            val context = ArticleContext(article, comments, session)
+                            launch {
+                                call.respond(FreeMarkerContent("article.ftl", context, "e"))
+                            }
+                        }
+
+                        override fun displayNotFound() {
+                            launch {
+                                call.respond(HttpStatusCode.NotFound)
+                            }
+                        }
+                    })
+
+                    val post = call.receiveParameters()
+                    val text = post["text"]
+                    val title = post["title"]
+
+                    if (text != null && title != null) {
+                        controller.store(title, text)
+                    }
+
+                    call.respondRedirect("/", permanent = false)
+                }
+            }
+
+            ////////////////////
+            // DELETE ARTICLE //
+            ////////////////////
+            post("/article/{id}/delete") {
+                val controller = appComponents.getArticlePresenter(object : ArticlePresenter.View {
+                    val session = call.sessions.get<MySession>()
+                    override fun displayArticle(article: Article, comments: List<Comment>) {
+                        val context = ArticleContext(article, comments, session)
                         launch {
-                            call.respond(FreeMarkerContent("index.ftl", context, "e"))
+                            call.respond(FreeMarkerContent("article.ftl", context, "e"))
+                        }
+                    }
+
+                    override fun displayNotFound() {
+                        launch {
+                            call.respond(HttpStatusCode.NotFound)
                         }
                     }
                 })
-                controller.start()
+                val id = call.parameters["id"]!!.toIntOrNull()
+                if (id != null) {
+                    controller.delete(id)
+                }
+                call.respondRedirect("/", permanent = false)
+            }
+
+            ////////////////////
+            // DELETE COMMENT //
+            ////////////////////
+            post ("/article/{id}/comment/delete/{comment_id}") {
+                val controller = appComponents.getCommentPresenter()
+                val id = call.parameters["id"]!!.toIntOrNull()
+                val comment_id = call.parameters["comment_id"]!!.toIntOrNull()
+                if (comment_id != null) {
+                    controller.delete(comment_id)
+                }
+                call.respondRedirect("/article/$id", permanent = false)
+            }
+
+            //////////
+            // LOGIN//
+            //////////
+            route("/login") {
+                get {
+                    val session = call.sessions.get<MySession>()
+                    if (session != null) {
+                        call.respondRedirect("/", permanent = false)
+                    } else {
+                        call.respond(FreeMarkerContent("login.ftl", null))
+                    }
+
+                }
+                authenticate("login") {
+                    post {
+                        val principal = call.principal<UserIdPrincipal>() ?: error("No principal")
+                        call.sessions.set("SESSION", MySession(principal.name))
+                        call.respondRedirect("/", permanent = false)
+                    }
+                }
+            }
+
+            ////////////
+            // LOGOUT //
+            ////////////
+            get("/logout") {
+                val session = call.sessions.get<MySession>()
+                if (session != null) {
+                    call.sessions.clear<MySession>()
+                    call.respondRedirect("/", permanent = false)
+                } else {
+                    call.respond(FreeMarkerContent("login.ftl", null))
+                }
             }
 
             static("/static") {

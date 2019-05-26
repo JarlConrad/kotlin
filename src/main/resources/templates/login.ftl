@@ -6,6 +6,7 @@
 <#if error??>
     <p style="color:red;">${error}</p>
 </#if>
+<p>Pour ce connecter utiliser un username identique au password</p>
 <form action="/login" method="post" enctype="application/x-www-form-urlencoded">
     <div>User:</div>
     <div><input type="text" name="username" /></div>

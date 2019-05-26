@@ -1,6 +1,6 @@
 <html>
 <head>
-
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <h1>${article.title}</h1>
@@ -9,6 +9,11 @@
         <#list comments as comment>
             <li>
                 ${comment.text}
+                <#if session?has_content>
+                    <form action="/article/${article.id}/comment/delete/${comment.id}" method="POST">
+                        <button class="delete" type="submit">Supprimer</button>
+                    </form>
+                </#if>
             </li>
         </#list>
     </ul>

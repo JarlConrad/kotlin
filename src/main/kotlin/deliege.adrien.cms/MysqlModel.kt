@@ -4,6 +4,47 @@ import deliege.adrien.cms.model.Article
 import deliege.adrien.cms.model.Comment
 
 class MysqlModel(val pool: ConnectionPool) : Model {
+    override fun postArticle(title: String, text: String) {
+        pool.useConnection { connection ->
+            connection.prepareStatement("INSERT INTO articles (title, text) VALUES (?, ?)").use { stmt ->
+                stmt.setString(1, title)
+                stmt.setString(2, text)
+
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    override fun deleteAllComments(article_id: Int) {
+        pool.useConnection { connection ->
+            connection.prepareStatement("DELETE FROM comments WHERE article_id = ?").use {stmt ->
+                stmt.setInt(1, article_id)
+
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    override fun deleteComment(id: Int) {
+        pool.useConnection { connection ->
+            connection.prepareStatement("DELETE FROM comments WHERE id = ?").use {stmt ->
+                stmt.setInt(1, id)
+
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    override fun deleteArticle(id: Int) {
+        pool.useConnection { connection ->
+            connection.prepareStatement("DELETE FROM articles WHERE id = ?").use { stmt ->
+                stmt.setInt(1, id)
+
+                stmt.executeUpdate()
+            }
+        }
+    }
+
     override fun postComment(article_id: Int, text: String) {
         pool.useConnection { connection ->
             connection.prepareStatement("INSERT INTO comments (article_id, text) VALUES (?, ?)").use { stmt ->

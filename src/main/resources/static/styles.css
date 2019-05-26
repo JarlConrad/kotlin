@@ -15,3 +15,15 @@ li a:hover {
     color: red;
     text-decoration: none;
 }
+
+button {
+    background-color: dodgerblue;
+}
+
+.delete {
+    background-color: red;
+}
+
+.login {
+    color: blue;
+}
